@@ -10,8 +10,6 @@ For security reasons, it's strongly recommended to:
 3. Use a strong password
 4. Set the password in an environment variable rather than in `.env` to avoid accidental commits
 
-Now follow the instructions under development.
-
 ## Development
 
 ### Install uv
@@ -47,8 +45,12 @@ For development you can use:
 
 To start the proxy server run `uv run psp`.
 
-Then you can make calls to the proxy e.g. for endpoint `/game/news/getNews` call:
+You'll see a startup banner and notification when the server is ready to accept connections. The server will also provide regular status updates in the console every 60 seconds.
 
+You can check the server status at any time by visiting:
+<http://127.0.0.1:5000/relic>
+
+Then you can make calls to the proxy e.g. for endpoint `/game/news/getNews` call:
 <http://127.0.0.1:5000/relic/game/news/getNews>
 
 You need to supply a header with the api key e.g. `api_key=DEV_API_KEY`
@@ -61,3 +63,18 @@ api_key and the base url for accessing the proxy in the Insomnia environment.
 ## License
 
 "AGPL-3.0-or-later", see [License](./LICENSE.md)
+
+## Changelog
+
+### April 15, 2025
+
+#### Added Server Status Notifications
+- Added startup banner when running the proxy server
+- Added server ready notification with clear visual indication
+- Implemented periodic health checks that print status every 60 seconds
+- Enhanced `/relic` endpoint with improved status information
+- Added initialization status indicators for app ticket and session
+- Updated gevent to be windows compatible
+
+#### Files Updated
+- `poc_steam_proxy/__init__.py`: Added health check functionality, improved status endpoint, and visual notifications

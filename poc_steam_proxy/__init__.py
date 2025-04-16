@@ -92,6 +92,26 @@ class RelicLinkProxy:
 
         self.logger.info(f"Logged on as: {self.steam.user.name}")
 
+    async def health_check(self):
+        """Perform regular health checks and print status to console"""
+        while True:
+            try:
+                # Print a health status every 60 seconds
+                await asyncio.sleep(60)
+                
+                # Get current time for the status message
+                current_time = datetime.datetime.now().strftime("%H:%M:%S")
+                
+                # Check if tokens are valid
+                app_ticket_status = "Valid" if self.app_ticket is not None else "Missing"
+                session_status = "Valid" if self.relic_session is not None else "Missing"
+                
+                # Print a simple status line
+                print(f"[{current_time}] Proxy running - App ticket: {app_ticket_status}, Session: {session_status}")
+                
+            except asyncio.CancelledError:
+                return
+    
     def _setup_logging(self) -> logging.Logger:
         logger = logging.getLogger("RelicLinkProxy")
         logger.setLevel(logging.INFO)
@@ -193,7 +213,11 @@ class RelicLinkProxy:
                 return
 
     async def dot(self, _):
-        data = {}
+        data = {
+            "status": "running",
+            "server_started": datetime.datetime.now(tz=datetime.timezone.utc).isoformat(),
+        }
+        
         if self.app_ticket is not None:
             data.update(
                 {
@@ -202,9 +226,12 @@ class RelicLinkProxy:
                         "utc_string": datetime.datetime.fromtimestamp(
                             self.app_ticket.last_update, tz=datetime.timezone.utc
                         ).isoformat(),
+                        "status": "valid"
                     }
                 }
             )
+        else:
+            data.update({"encrypted_app_token": {"status": "initializing"}})
 
         if self.relic_session is not None:
             data.update(
@@ -214,9 +241,13 @@ class RelicLinkProxy:
                         "utc_string": datetime.datetime.fromtimestamp(
                             self.relic_session.last_update, tz=datetime.timezone.utc
                         ).isoformat(),
+                        "status": "valid"
                     }
                 }
             )
+        else:
+            data.update({"relic_session": {"status": "initializing"}})
+            
         return web.json_response(data=data)
 
     async def forward_request(self, request):
@@ -292,6 +323,8 @@ class RelicLinkProxy:
             site = web.TCPSite(self.webapp, "0.0.0.0", 5000)
             await site.start()
             self.logger.info("[aiohttp Server] Site started")
+            print("\n✅ Server is running and ready at http://127.0.0.1:5000")
+            print("   You can check the server status at http://127.0.0.1:5000/relic\n")
 
             while True:
                 await asyncio.sleep(3600)  # sleep forever
@@ -311,8 +344,20 @@ async def run():
         sys.exit(1)
 
     proxy = RelicLinkProxy(account_name, password, api_key_json_path)
+    # Add clear startup notification
+    print("\n===== LibreMatch Steam Auth Proxy =====")
+    print("Starting server at http://127.0.0.1:5000")
+    print("Health check available at http://127.0.0.1:5000/relic")
+    print("==========================================\n")
+    
     await proxy.steam_login()
-    await asyncio.gather(*[proxy.run_server(), proxy.update_token()])
+    
+    # Create tasks for server, token update, and health check
+    server_task = asyncio.create_task(proxy.run_server())
+    token_task = asyncio.create_task(proxy.update_token())
+    health_task = asyncio.create_task(proxy.health_check())
+    
+    await asyncio.gather(server_task, token_task, health_task)
 
 
 def main():
